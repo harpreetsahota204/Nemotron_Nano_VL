@@ -5,8 +5,8 @@
         {
             "base_name": "nvidia/Llama-3.1-Nemotron-Nano-VL-8B-V1",
             "base_filename":"Llama-3.1-Nemotron-Nano-VL-8B-V1",
-            "author": "XiaomiMiMo",
-            "license": "MIT",
+            "author": "NVIDIA",
+            "license": "NVIDIA Open License Agreement",
             "source": "https://huggingface.co/nvidia/Llama-3.1-Nemotron-Nano-VL-8B-V1",
             "description": "Llama Nemotron Nano VL is a leading document intelligence vision language model (VLMs) that enables the ability to query and summarize images from the physical or virtual world.",
             "tags": [
