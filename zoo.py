@@ -11,7 +11,7 @@ import torch
 import fiftyone as fo
 from fiftyone import Model, SamplesMixin
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoImageProcessor
+from transformers import AutoModel, AutoTokenizer, AutoImageProcessor
 from transformers.utils import is_flash_attn_2_available
 
 
@@ -143,7 +143,7 @@ class NemotronNanoModel(SamplesMixin, Model):
         if self.device == "cuda":
             model_kwargs["torch_dtype"] = torch.bfloat16
 
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model = AutoModel.from_pretrained(
             model_path,
             trust_remote_code=True,
             **model_kwargs
