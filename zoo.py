@@ -237,159 +237,159 @@ class NemotronNanoModel(SamplesMixin, Model):
             logger.debug(f"Failed to parse JSON: {json_str[:200]}")
             return None
 
-def _to_detections(self, boxes: List[Dict], image_width: int, image_height: int) -> fo.Detections:
-    """Convert bounding boxes to FiftyOne Detections with associated reasoning.
-    
-    Takes detection results and converts them to FiftyOne's format, including:
-    - Coordinate normalization from 0-1000 range to 0-1 range
-    - Label extraction
-    - Reasoning attachment
-    
-    Args:
-        boxes: Detection results, either:
-            - List of detection dictionaries
-            - Dictionary containing 'data' and 'reasoning'
-        image_width: Original image width in pixels
-        image_height: Original image height in pixels
-    
-    Returns:
-        fo.Detections: FiftyOne Detections object containing all converted detections
-    """
-    detections = []
-    
-    # Extract reasoning if present in dictionary format
-    reasoning = boxes.get("reason", "") if isinstance(boxes, dict) else ""
-    
-    # Handle nested dictionary structures
-    if isinstance(boxes, dict):
-        # Try to get data field, fall back to original dict if not found
-        boxes = boxes.get("data", boxes)
+    def _to_detections(self, boxes: List[Dict], image_width: int, image_height: int) -> fo.Detections:
+        """Convert bounding boxes to FiftyOne Detections with associated reasoning.
+        
+        Takes detection results and converts them to FiftyOne's format, including:
+        - Coordinate normalization from 0-1000 range to 0-1 range
+        - Label extraction
+        - Reasoning attachment
+        
+        Args:
+            boxes: Detection results, either:
+                - List of detection dictionaries
+                - Dictionary containing 'data' and 'reasoning'
+            image_width: Original image width in pixels
+            image_height: Original image height in pixels
+        
+        Returns:
+            fo.Detections: FiftyOne Detections object containing all converted detections
+        """
+        detections = []
+        
+        # Extract reasoning if present in dictionary format
+        reasoning = boxes.get("reason", "") if isinstance(boxes, dict) else ""
+        
+        # Handle nested dictionary structures
         if isinstance(boxes, dict):
-            # If still a dict, try to find first list value
-            boxes = next((v for v in boxes.values() if isinstance(v, list)), boxes)
-    
-    # Ensure we're working with a list of boxes
-    boxes = boxes if isinstance(boxes, list) else [boxes]
-    
-    # Process each bounding box
-    for box in boxes:
-        try:
-            # Extract bbox coordinates, checking both possible keys
-            bbox = box.get('bbox_2d', box.get('bbox', None))
-            if not bbox:
+            # Try to get data field, fall back to original dict if not found
+            boxes = boxes.get("data", boxes)
+            if isinstance(boxes, dict):
+                # If still a dict, try to find first list value
+                boxes = next((v for v in boxes.values() if isinstance(v, list)), boxes)
+        
+        # Ensure we're working with a list of boxes
+        boxes = boxes if isinstance(boxes, list) else [boxes]
+        
+        # Process each bounding box
+        for box in boxes:
+            try:
+                # Extract bbox coordinates, checking both possible keys
+                bbox = box.get('bbox_2d', box.get('bbox', None))
+                if not bbox:
+                    continue
+                    
+                # Convert coordinates from 0-1000 normalized range to pixel coordinates
+                # then to FiftyOne's 0-1 relative format
+                x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
+                
+                # Convert from 0-1000 range to pixel coordinates
+                x1_pixel = (x1_norm / 1000.0) * image_width
+                y1_pixel = (y1_norm / 1000.0) * image_height
+                x2_pixel = (x2_norm / 1000.0) * image_width
+                y2_pixel = (y2_norm / 1000.0) * image_height
+                
+                # Convert to FiftyOne's relative [0,1] format: [top-left-x, top-left-y, width, height]
+                x = x1_pixel / image_width  # Left coordinate (0-1)
+                y = y1_pixel / image_height  # Top coordinate (0-1)
+                w = (x2_pixel - x1_pixel) / image_width  # Width (0-1)
+                h = (y2_pixel - y1_pixel) / image_height  # Height (0-1)
+                
+                # Create FiftyOne Detection object
+                detection = fo.Detection(
+                    label=str(box.get("answer", box.get("label", "object"))),  # Handle both answer and label keys
+                    bounding_box=[x, y, w, h],
+                    reasoning=reasoning  # Attach reasoning to detection
+                )
+                detections.append(detection)
+                    
+            except Exception as e:
+                logger.debug(f"Error processing box {box}: {e}")
                 continue
-                
-            # Convert coordinates from 0-1000 normalized range to pixel coordinates
-            # then to FiftyOne's 0-1 relative format
-            x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
-            
-            # Convert from 0-1000 range to pixel coordinates
-            x1_pixel = (x1_norm / 1000.0) * image_width
-            y1_pixel = (y1_norm / 1000.0) * image_height
-            x2_pixel = (x2_norm / 1000.0) * image_width
-            y2_pixel = (y2_norm / 1000.0) * image_height
-            
-            # Convert to FiftyOne's relative [0,1] format: [top-left-x, top-left-y, width, height]
-            x = x1_pixel / image_width  # Left coordinate (0-1)
-            y = y1_pixel / image_height  # Top coordinate (0-1)
-            w = (x2_pixel - x1_pixel) / image_width  # Width (0-1)
-            h = (y2_pixel - y1_pixel) / image_height  # Height (0-1)
-            
-            # Create FiftyOne Detection object
-            detection = fo.Detection(
-                label=str(box.get("answer", box.get("label", "object"))),  # Handle both answer and label keys
-                bounding_box=[x, y, w, h],
-                reasoning=reasoning  # Attach reasoning to detection
-            )
-            detections.append(detection)
-                
-        except Exception as e:
-            logger.debug(f"Error processing box {box}: {e}")
-            continue
-                
-    return fo.Detections(detections=detections)
+                    
+        return fo.Detections(detections=detections)
 
-def _to_ocr_detections(self, boxes: List[Dict], image_width: int, image_height: int) -> fo.Detections:
-    """Convert OCR results to FiftyOne Detections with reasoning.
-    
-    Takes OCR detection results and converts them to FiftyOne's format, including:
-    - Coordinate normalization from 0-1000 range to 0-1 range
-    - Text content preservation
-    - Text type categorization
-    - Reasoning attachment
-    
-    Args:
-        boxes: OCR detection results, either:
-            - List of OCR dictionaries
-            - Dictionary containing 'data' and 'reasoning'
-        image_width: Original image width in pixels
-        image_height: Original image height in pixels
-    
-    Returns:
-        fo.Detections: FiftyOne Detections object containing all converted OCR detections
-    """
-    detections = []
-    
-    # Extract reasoning if present in dictionary format
-    reasoning = boxes.get("reason", "") if isinstance(boxes, dict) else ""
-    
-    # Handle nested dictionary structures
-    if isinstance(boxes, dict):
-        # Try to get data field, fall back to original dict if not found
-        boxes = boxes.get("data", boxes)
+    def _to_ocr_detections(self, boxes: List[Dict], image_width: int, image_height: int) -> fo.Detections:
+        """Convert OCR results to FiftyOne Detections with reasoning.
+        
+        Takes OCR detection results and converts them to FiftyOne's format, including:
+        - Coordinate normalization from 0-1000 range to 0-1 range
+        - Text content preservation
+        - Text type categorization
+        - Reasoning attachment
+        
+        Args:
+            boxes: OCR detection results, either:
+                - List of OCR dictionaries
+                - Dictionary containing 'data' and 'reasoning'
+            image_width: Original image width in pixels
+            image_height: Original image height in pixels
+        
+        Returns:
+            fo.Detections: FiftyOne Detections object containing all converted OCR detections
+        """
+        detections = []
+        
+        # Extract reasoning if present in dictionary format
+        reasoning = boxes.get("reason", "") if isinstance(boxes, dict) else ""
+        
+        # Handle nested dictionary structures
         if isinstance(boxes, dict):
-            # If still a dict, try to find first list value (usually "text_detections")
-            boxes = next((v for v in boxes.values() if isinstance(v, list)), boxes)
-    
-    # Ensure boxes is a list, even for single box input
-    boxes = boxes if isinstance(boxes, list) else [boxes]
-    
-    # Process each OCR box
-    for box in boxes:
-        try:
-            # Extract bbox coordinates, checking both possible keys
-            bbox = box.get('bbox_2d', box.get('bbox', None))
-            if not bbox:
+            # Try to get data field, fall back to original dict if not found
+            boxes = boxes.get("data", boxes)
+            if isinstance(boxes, dict):
+                # If still a dict, try to find first list value (usually "text_detections")
+                boxes = next((v for v in boxes.values() if isinstance(v, list)), boxes)
+        
+        # Ensure boxes is a list, even for single box input
+        boxes = boxes if isinstance(boxes, list) else [boxes]
+        
+        # Process each OCR box
+        for box in boxes:
+            try:
+                # Extract bbox coordinates, checking both possible keys
+                bbox = box.get('bbox_2d', box.get('bbox', None))
+                if not bbox:
+                    continue
+                    
+                # Extract text content and type
+                text = box.get('content', box.get('text', ''))  # Handle both content and text keys
+                text_type = box.get('category', box.get('text_type', 'text'))  # Default to 'text' if not specified
+                
+                # Skip if no text content
+                if not text:
+                    continue
+                    
+                # Convert coordinates from 0-1000 normalized range to pixel coordinates
+                # then to FiftyOne's 0-1 relative format
+                x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
+                
+                # Convert from 0-1000 range to pixel coordinates
+                x1_pixel = (x1_norm / 1000.0) * image_width
+                y1_pixel = (y1_norm / 1000.0) * image_height
+                x2_pixel = (x2_norm / 1000.0) * image_width
+                y2_pixel = (y2_norm / 1000.0) * image_height
+                
+                # Convert to FiftyOne's relative [0,1] format: [top-left-x, top-left-y, width, height]
+                x = x1_pixel / image_width  # Left coordinate (0-1)
+                y = y1_pixel / image_height  # Top coordinate (0-1)
+                w = (x2_pixel - x1_pixel) / image_width  # Width (0-1)
+                h = (y2_pixel - y1_pixel) / image_height  # Height (0-1)
+                
+                # Create FiftyOne Detection object
+                detection = fo.Detection(
+                    label=str(text_type),
+                    bounding_box=[x, y, w, h],
+                    text=str(text),
+                    reasoning=reasoning  # Attach reasoning to detection
+                )
+                detections.append(detection)
+                    
+            except Exception as e:
+                logger.debug(f"Error processing OCR box {box}: {e}")
                 continue
-                
-            # Extract text content and type
-            text = box.get('content', box.get('text', ''))  # Handle both content and text keys
-            text_type = box.get('category', box.get('text_type', 'text'))  # Default to 'text' if not specified
-            
-            # Skip if no text content
-            if not text:
-                continue
-                
-            # Convert coordinates from 0-1000 normalized range to pixel coordinates
-            # then to FiftyOne's 0-1 relative format
-            x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
-            
-            # Convert from 0-1000 range to pixel coordinates
-            x1_pixel = (x1_norm / 1000.0) * image_width
-            y1_pixel = (y1_norm / 1000.0) * image_height
-            x2_pixel = (x2_norm / 1000.0) * image_width
-            y2_pixel = (y2_norm / 1000.0) * image_height
-            
-            # Convert to FiftyOne's relative [0,1] format: [top-left-x, top-left-y, width, height]
-            x = x1_pixel / image_width  # Left coordinate (0-1)
-            y = y1_pixel / image_height  # Top coordinate (0-1)
-            w = (x2_pixel - x1_pixel) / image_width  # Width (0-1)
-            h = (y2_pixel - y1_pixel) / image_height  # Height (0-1)
-            
-            # Create FiftyOne Detection object
-            detection = fo.Detection(
-                label=str(text_type),
-                bounding_box=[x, y, w, h],
-                text=str(text),
-                reasoning=reasoning  # Attach reasoning to detection
-            )
-            detections.append(detection)
-                
-        except Exception as e:
-            logger.debug(f"Error processing OCR box {box}: {e}")
-            continue
-                
-    return fo.Detections(detections=detections)
+                    
+        return fo.Detections(detections=detections)
 
 
     def _to_classifications(self, classes: List[Dict]) -> fo.Classifications:
