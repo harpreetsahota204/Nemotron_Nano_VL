@@ -1,6 +1,6 @@
 {
     "name": "Llama-3.1-Nemotron-Nano-VL-8B-V1",
-    "url": "https://github.com/harpreetsahota204/MiMo_VL",
+    "url": "https://github.com/harpreetsahota204/Nemotron_Nano_VL",
     "models": [
         {
             "base_name": "nvidia/Llama-3.1-Nemotron-Nano-VL-8B-V1",
