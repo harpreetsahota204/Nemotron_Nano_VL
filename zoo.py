@@ -477,7 +477,8 @@ class NemotronNanoModel(SamplesMixin, Model):
         generation_config = dict(
             max_new_tokens=4096, 
             do_sample=False, 
-            eos_token_id=self.tokenizer.eos_token_id)
+            pad_token_id=self.tokenizer.eos_token_id,
+            )
 
         output_text = self.model.chat(
             tokenizer=self.tokenizer, 
