@@ -2,6 +2,8 @@
 
 NVIDIA's Llama-3.1-Nemotron-Nano-VL-8B-V1 integrated as a Remote Source Zoo Model for FiftyOne, enabling seamless computer vision tasks including object detection, OCR, classification, and visual question answering.
 
+<img src="nemotronvl-lq.gif">
+
 ## Installation
 
 ```bash
