@@ -4,6 +4,7 @@ import logging
 import json
 from PIL import Image
 from typing import Dict, Any, List, Union, Optional
+import ast 
 
 import numpy as np
 import torch
@@ -285,8 +286,7 @@ class NemotronNanoModel(SamplesMixin, Model):
                 
                 # Handle bbox coordinates that are passed as strings like "(100,260,940,690)"
                 if isinstance(bbox, str):
-                    # Remove parentheses and split by comma
-                    bbox = bbox.replace('(', '').replace(')', '').split(',')
+                    bbox = ast.literal_eval(bbox)
                     
                 # Convert coordinates to float
                 x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
@@ -356,11 +356,10 @@ class NemotronNanoModel(SamplesMixin, Model):
                 bbox = box.get('bbox', box.get('bbox_2d', None))
                 if not bbox:
                     continue
-                
+
                 # Handle bbox coordinates that are passed as strings like "(100,260,940,690)"
                 if isinstance(bbox, str):
-                    # Remove parentheses and split by comma
-                    bbox = bbox.replace('(', '').replace(')', '').split(',')
+                    bbox = ast.literal_eval(bbox)
 
                 # Extract text content and type
                 text = box.get('content', box.get('text', ''))  # Handle both content and text keys
