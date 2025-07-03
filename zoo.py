@@ -152,7 +152,7 @@ class NemotronNanoModel(SamplesMixin, Model):
             model_path,
             trust_remote_code=True,
             device=self.device,
-            # use_fast=True
+            use_fast=True
         )
 
         logger.info("Loading tokenizer")
