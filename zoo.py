@@ -139,9 +139,13 @@ class NemotronNanoModel(SamplesMixin, Model):
         model_kwargs = {
             "device_map":self.device,
             }
+        
         # Only set specific torch_dtype for CUDA devices
         if self.device == "cuda":
             model_kwargs["torch_dtype"] = torch.bfloat16
+
+        if is_flash_attn_2_available():
+            model_kwargs["attn_implementation"] = "flash_attention_2"
 
         self.model = AutoModel.from_pretrained(
             model_path,
@@ -154,7 +158,7 @@ class NemotronNanoModel(SamplesMixin, Model):
             model_path,
             trust_remote_code=True,
             device=self.device,
-            use_fast=True
+            # use_fast=True
         )
 
         logger.info("Loading tokenizer")
