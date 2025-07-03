@@ -37,9 +37,6 @@ Always return your response as valid JSON wrapped in ```json blocks.
 }
 ```
 
-The JSON should contain bounding boxes in pixel coordinates [x1,y1,x2,y2] format, where:
-- x1,y1 is the top-left corner
-- x2,y2 is the bottom-right corner
 - Provide specific answer for each detected element but limit to one or two words
 - Include all relevant elements that match the user's request
 - For UI elements, include their function when possible (e.g., "Login Button" rather than just "Button")
@@ -80,7 +77,7 @@ Always return your response as valid JSON wrapped in ```json blocks.
 {
     "text_detections": [
         {
-            "bbox": [x1, y1, x2, y2], 
+            "bbox": (x1, y1, x2, y2), 
             "category": category,  # Select appropriate text category
             "content": text_content   # Transcribe text exactly as it appears
         }
@@ -88,9 +85,7 @@ Always return your response as valid JSON wrapped in ```json blocks.
 }
 ```
 
-The JSON should contain bounding boxes in pixel coordinates [x1,y1,x2,y2] format, where:
-- x1,y1 is the top-left corner
-- x2,y2 is the bottom-right corner
+
 - 'category' is important to get right, it's the text region category based on the document, including but not limited to: title, abstract, heading, paragraph, button, link, label, icon, menu item, etc.
 - The 'content' field should be a string containing the exact text content found in the region
 
@@ -449,7 +444,7 @@ class NemotronNanoModel(SamplesMixin, Model):
                 
         return fo.Classifications(classifications=classifications)
 
-    def _predict(self, image: Image.Image, sample=None) -> Union[fo.Detections, fo.Keypoints, fo.Classifications, str]:
+    def _predict(self, image: Image.Image, sample=None) -> Union[fo.Detections, fo.Classifications, str]:
         """Process a single image through the model and return predictions.
         
         This internal method handles the core prediction logic including:
@@ -503,15 +498,12 @@ class NemotronNanoModel(SamplesMixin, Model):
         if self.operation == "vqa":
             return output_text.strip()
         elif self.operation == "detect":
-            print(f"===RAW OUTPUT==== /n {output_text}")
             parsed_output = self._parse_json(output_text)
             return self._to_detections(parsed_output, input_width, input_height)
         elif self.operation == "ocr":
-            print(f"===RAW OUTPUT==== /n {output_text}")
             parsed_output = self._parse_json(output_text)
             return self._to_ocr_detections(parsed_output, input_width, input_height)
         elif self.operation == "classify":
-            print(f"===RAW OUTPUT==== /n {output_text}")
             parsed_output = self._parse_json(output_text)
             return self._to_classifications(parsed_output)
 
