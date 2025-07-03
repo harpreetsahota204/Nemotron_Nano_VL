@@ -261,13 +261,10 @@ class NemotronNanoModel(SamplesMixin, Model):
         """
         detections = []
         
-        # Extract reasoning if present in dictionary format
-        reasoning = boxes.get("reason", "") if isinstance(boxes, dict) else ""
-        
         # Handle nested dictionary structures
         if isinstance(boxes, dict):
             # Try to get data field, fall back to original dict if not found
-            boxes = boxes.get("data", boxes)
+            boxes = boxes.get("detections", boxes)
             if isinstance(boxes, dict):
                 # If still a dict, try to find first list value
                 boxes = next((v for v in boxes.values() if isinstance(v, list)), boxes)
@@ -282,6 +279,9 @@ class NemotronNanoModel(SamplesMixin, Model):
                 bbox = box.get('bbox_2d', box.get('bbox', None))
                 if not bbox:
                     continue
+                
+                # Extract reasoning for this specific detection
+                reasoning = box.get("reason", "")
                     
                 # Convert coordinates from 0-1000 normalized range to pixel coordinates
                 # then to FiftyOne's 0-1 relative format
@@ -334,13 +334,10 @@ class NemotronNanoModel(SamplesMixin, Model):
         """
         detections = []
         
-        # Extract reasoning if present in dictionary format
-        reasoning = boxes.get("reason", "") if isinstance(boxes, dict) else ""
-        
         # Handle nested dictionary structures
         if isinstance(boxes, dict):
             # Try to get data field, fall back to original dict if not found
-            boxes = boxes.get("data", boxes)
+            boxes = boxes.get("text_detections", boxes)
             if isinstance(boxes, dict):
                 # If still a dict, try to find first list value (usually "text_detections")
                 boxes = next((v for v in boxes.values() if isinstance(v, list)), boxes)
@@ -359,6 +356,9 @@ class NemotronNanoModel(SamplesMixin, Model):
                 # Extract text content and type
                 text = box.get('content', box.get('text', ''))  # Handle both content and text keys
                 text_type = box.get('category', box.get('text_type', 'text'))  # Default to 'text' if not specified
+                
+                # Extract reasoning for this specific detection
+                reasoning = box.get("reason", "")
                 
                 # Skip if no text content
                 if not text:
@@ -417,18 +417,18 @@ class NemotronNanoModel(SamplesMixin, Model):
         """
         classifications = []
         
-        # Extract reasoning if present
-        reasoning = classes.get("reason", "") if isinstance(classes, dict) else ""
-        
         # Handle nested dictionary structures
         if isinstance(classes, dict):
-            classes = classes.get("data", classes)
+            classes = classes.get("classifications", classes)
             if isinstance(classes, dict):
                 classes = next((v for v in classes.values() if isinstance(v, list)), classes)
         
         # Process each classification
         for cls in classes:
             try:
+                # Extract reasoning for this specific classification
+                reasoning = cls.get("reason", "")
+                
                 # Create FiftyOne Classification object
                 classification = fo.Classification(
                     label=str(cls["label"]),
