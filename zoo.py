@@ -74,20 +74,15 @@ Always return your response as valid JSON wrapped in ```json blocks.
 
 ```json
 {
-    "text_detections": [
+    "detections": [
         {
-            "content": text_content   # Transcribe text exactly as it appears
+            "answer": text_content   # Transcribe text exactly as it appears
             "bbox": (x1, y1, x2, y2), # 'bbox' refers to the bounding box position of the 'content' in the image. bbox is the coordinates of the top-left corner and the bottom-right corners. The 'bbox' should be normalized coordinates ranging from O to 1000 by the image width and height.
             "category": category,  # Select appropriate text category
         }
     ]
 }
 ```
-
-- 'category' is important to get right, it's the text region category based on the document, including but not limited to: title, abstract, heading, paragraph, button, link, label, icon, menu item, etc.
-- The 'content' field should be a string containing the exact text content found in the region
-
-The user might give you a single word instruction, a query, a list of objects, or more complex instructions. Adhere to the user's perform the OCR detections.
 """
 
 DEFAULT_VQA_SYSTEM_PROMPT = "You are a helpful assistant. You provide clear and concise answerss to questions about images. Report answers in natural language text in English."
