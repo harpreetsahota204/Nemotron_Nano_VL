@@ -15,7 +15,6 @@ from fiftyone import Model, SamplesMixin
 from transformers import AutoModel, AutoTokenizer, AutoImageProcessor
 from transformers.utils import is_flash_attn_2_available
 
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_DETECTION_SYSTEM_PROMPT = """You are a helpful assistant. You specialize in detecting and localizating meaningful visual elements. 
@@ -67,31 +66,12 @@ The JSON should contain a list of classifications where:
 - The response should be a list of classifications
 """
 
-DEFAULT_OCR_SYSTEM_PROMPT = """You are a helpful assistant specializing in text detection and recognition (OCR) in images. Your can read, detect, and locate text from any visual content, including documents, UI elements, signs, or any other text-containing regions.
-
-Fetch the bounding box for each block along with the corresponding category from the following options: Bibliography, Caption, Code, Footnote, Formula, List-item, Page-footer, Page-header, Picture, Section-header, TOC (Table-of-Contents), Table, Text and Title. 
-Always return your response as valid JSON wrapped in ```json blocks.
-
-```json
-{
-    "detections": [
-        {
-            "answer": text_content   # Transcribe text exactly as it appears
-            "bbox": (x1, y1, x2, y2), # 'bbox' refers to the bounding box position of the 'content' in the image. bbox is the coordinates of the top-left corner and the bottom-right corners. The 'bbox' should be normalized coordinates ranging from O to 1000 by the image width and height.
-            "category": category,  # Select appropriate text category
-        }
-    ]
-}
-```
-"""
-
 DEFAULT_VQA_SYSTEM_PROMPT = "You are a helpful assistant. You provide clear and concise answerss to questions about images. Report answers in natural language text in English."
 
 OPERATIONS = {
     "detect": DEFAULT_DETECTION_SYSTEM_PROMPT,
     "classify": DEFAULT_CLASSIFICATION_SYSTEM_PROMPT,
     "vqa": DEFAULT_VQA_SYSTEM_PROMPT,
-    "ocr": DEFAULT_OCR_SYSTEM_PROMPT,
 }
 
 def get_device():
@@ -305,93 +285,6 @@ class NemotronNanoModel(SamplesMixin, Model):
                     
         return fo.Detections(detections=detections)
 
-    def _to_ocr_detections(self, boxes: List[Dict], image_width: int, image_height: int) -> fo.Detections:
-        """Convert OCR results to FiftyOne Detections with reasoning.
-        
-        Takes OCR detection results and converts them to FiftyOne's format, including:
-        - Coordinate normalization from 0-1000 range to 0-1 range
-        - Text content preservation
-        - Text type categorization
-        - Reasoning attachment
-        
-        Args:
-            boxes: OCR detection results, either:
-                - List of OCR dictionaries
-                - Dictionary containing 'data' and 'reasoning'
-            image_width: Original image width in pixels
-            image_height: Original image height in pixels
-        
-        Returns:
-            fo.Detections: FiftyOne Detections object containing all converted OCR detections
-        """
-        detections = []
-        
-        # Handle nested dictionary structures
-        if isinstance(boxes, dict):
-            # Try to get data field, fall back to original dict if not found
-            boxes = boxes.get("text_detections", boxes)
-            if isinstance(boxes, dict):
-                # If still a dict, try to find first list value (usually "text_detections")
-                boxes = next((v for v in boxes.values() if isinstance(v, list)), boxes)
-        
-        # Ensure boxes is a list, even for single box input
-        boxes = boxes if isinstance(boxes, list) else [boxes]
-        
-        # Process each OCR box
-        for box in boxes:
-            try:
-                # Extract bbox coordinates, checking both possible keys
-                bbox = box.get('bbox', box.get('bbox_2d', None))
-                if not bbox:
-                    continue
-
-                # Handle bbox coordinates that are passed as strings like "(100,260,940,690)"
-                if isinstance(bbox, str):
-                    bbox = ast.literal_eval(bbox)
-
-                # Extract text content and type
-                text = box.get('content', box.get('text', ''))  # Handle both content and text keys
-                text_type = box.get('category', box.get('text_type', 'text'))  # Default to 'text' if not specified
-                
-                # Extract reasoning for this specific detection
-                reasoning = box.get("reason", "")
-                
-                # Skip if no text content
-                if not text:
-                    continue
-                    
-                # Convert coordinates from 0-1000 normalized range to pixel coordinates
-                # then to FiftyOne's 0-1 relative format
-                x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
-                
-                # Convert from 0-1000 range to pixel coordinates
-                x1_pixel = (x1_norm / 1000.0) * image_width
-                y1_pixel = (y1_norm / 1000.0) * image_height
-                x2_pixel = (x2_norm / 1000.0) * image_width
-                y2_pixel = (y2_norm / 1000.0) * image_height
-                
-                # Convert to FiftyOne's relative [0,1] format: [top-left-x, top-left-y, width, height]
-                x = x1_pixel / image_width  # Left coordinate (0-1)
-                y = y1_pixel / image_height  # Top coordinate (0-1)
-                w = (x2_pixel - x1_pixel) / image_width  # Width (0-1)
-                h = (y2_pixel - y1_pixel) / image_height  # Height (0-1)
-                
-                # Create FiftyOne Detection object
-                detection = fo.Detection(
-                    label=str(text_type),
-                    bounding_box=[x, y, w, h],
-                    text=str(text),
-                    reasoning=reasoning  # Attach reasoning to detection
-                )
-                detections.append(detection)
-                    
-            except Exception as e:
-                logger.debug(f"Error processing OCR box {box}: {e}")
-                continue
-                    
-        return fo.Detections(detections=detections)
-
-
     def _to_classifications(self, classes: List[Dict]) -> fo.Classifications:
         """Convert classification results to FiftyOne Classifications with reasoning.
         
@@ -491,15 +384,9 @@ class NemotronNanoModel(SamplesMixin, Model):
         if self.operation == "vqa":
             return output_text.strip()
         elif self.operation == "detect":
-            print(f"====RAW MODEL OUTPUT: {output_text}====")
             parsed_output = self._parse_json(output_text)
             return self._to_detections(parsed_output, input_width, input_height)
-        elif self.operation == "ocr":
-            print(f"====RAW MODEL OUTPUT: {output_text}====")
-            parsed_output = self._parse_json(output_text)
-            return self._to_ocr_detections(parsed_output, input_width, input_height)
         elif self.operation == "classify":
-            print(f"====RAW MODEL OUTPUT: {output_text}====")
             parsed_output = self._parse_json(output_text)
             return self._to_classifications(parsed_output)
 
