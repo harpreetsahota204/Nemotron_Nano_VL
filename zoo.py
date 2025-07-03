@@ -491,12 +491,15 @@ class NemotronNanoModel(SamplesMixin, Model):
         if self.operation == "vqa":
             return output_text.strip()
         elif self.operation == "detect":
+            print(f"====RAW MODEL OUTPUT: {output_text}====")
             parsed_output = self._parse_json(output_text)
             return self._to_detections(parsed_output, input_width, input_height)
         elif self.operation == "ocr":
+            print(f"====RAW MODEL OUTPUT: {output_text}====")
             parsed_output = self._parse_json(output_text)
             return self._to_ocr_detections(parsed_output, input_width, input_height)
         elif self.operation == "classify":
+            print(f"====RAW MODEL OUTPUT: {output_text}====")
             parsed_output = self._parse_json(output_text)
             return self._to_classifications(parsed_output)
 
