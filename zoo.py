@@ -276,15 +276,19 @@ class NemotronNanoModel(SamplesMixin, Model):
         for box in boxes:
             try:
                 # Extract bbox coordinates, checking both possible keys
-                bbox = box.get('bbox_2d', box.get('bbox', None))
+                bbox = box.get('bbox', box.get('bbox_2d', None))
                 if not bbox:
                     continue
                 
                 # Extract reasoning for this specific detection
                 reasoning = box.get("reason", "")
+                
+                # Handle bbox coordinates that are passed as strings like "(100,260,940,690)"
+                if isinstance(bbox, str):
+                    # Remove parentheses and split by comma
+                    bbox = bbox.replace('(', '').replace(')', '').split(',')
                     
-                # Convert coordinates from 0-1000 normalized range to pixel coordinates
-                # then to FiftyOne's 0-1 relative format
+                # Convert coordinates to float
                 x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
                 
                 # Convert from 0-1000 range to pixel coordinates
@@ -349,10 +353,15 @@ class NemotronNanoModel(SamplesMixin, Model):
         for box in boxes:
             try:
                 # Extract bbox coordinates, checking both possible keys
-                bbox = box.get('bbox_2d', box.get('bbox', None))
+                bbox = box.get('bbox', box.get('bbox_2d', None))
                 if not bbox:
                     continue
-                    
+                
+                # Handle bbox coordinates that are passed as strings like "(100,260,940,690)"
+                if isinstance(bbox, str):
+                    # Remove parentheses and split by comma
+                    bbox = bbox.replace('(', '').replace(')', '').split(',')
+
                 # Extract text content and type
                 text = box.get('content', box.get('text', ''))  # Handle both content and text keys
                 text_type = box.get('category', box.get('text_type', 'text'))  # Default to 'text' if not specified
