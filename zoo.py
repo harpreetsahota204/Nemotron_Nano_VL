@@ -259,17 +259,11 @@ class NemotronNanoModel(SamplesMixin, Model):
                 # Convert coordinates to float
                 x1_norm, y1_norm, x2_norm, y2_norm = map(float, bbox)
                 
-                # Convert from 0-1000 range to pixel coordinates
-                x1_pixel = (x1_norm / 1000.0) * image_width
-                y1_pixel = (y1_norm / 1000.0) * image_height
-                x2_pixel = (x2_norm / 1000.0) * image_width
-                y2_pixel = (y2_norm / 1000.0) * image_height
-                
-                # Convert to FiftyOne's relative [0,1] format: [top-left-x, top-left-y, width, height]
-                x = x1_pixel / image_width  # Left coordinate (0-1)
-                y = y1_pixel / image_height  # Top coordinate (0-1)
-                w = (x2_pixel - x1_pixel) / image_width  # Width (0-1)
-                h = (y2_pixel - y1_pixel) / image_height  # Height (0-1)
+                # Directly convert from 0-1000 range to 0-1 range for FiftyOne
+                x = x1_norm / 1000.0  # Left coordinate (0-1)
+                y = y1_norm / 1000.0  # Top coordinate (0-1)
+                w = (x2_norm - x1_norm) / 1000.0  # Width (0-1)
+                h = (y2_norm - y1_norm) / 1000.0  # Height (0-1)
                 
                 # Create FiftyOne Detection object
                 detection = fo.Detection(
