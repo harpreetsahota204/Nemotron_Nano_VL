@@ -115,6 +115,8 @@ class NemotronNanoModel(SamplesMixin, Model):
 
         if is_flash_attn_2_available():
             model_kwargs["attn_implementation"] = "flash_attention_2"
+        else:
+            model_kwargs["attn_implementation"] = "sdpa"
 
         self.model = AutoModel.from_pretrained(
             model_path,
